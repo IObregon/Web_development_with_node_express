@@ -2,5 +2,6 @@
 node_modules
 *~
 .DS_Store
+credentials.js
 # put any other files you don't want to check in here,
 # such as .DS_Store, *.bak, etc.
