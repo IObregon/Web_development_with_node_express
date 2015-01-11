@@ -1,6 +1,6 @@
 var express = require('express');
 var fortune = require('./lib/fortune.js');
-
+var fs = require('fs');
 var app = express();
 var formidable = require('formidable');
 var credentials = require('./credentials');
@@ -15,6 +15,7 @@ var mailTransport = nodemailer.createTransport('SMTP',{
     		pass: credentials.gmail.password,
 	}
 });
+
 
 app.use(require('body-parser')());
 app.use(require('cookie-parser')(credentials.cookieSecret));
@@ -58,6 +59,43 @@ app.use(function(req, res, next){
 	var cluster = require('cluster');
 	if(cluster.isWorker) console.log('Worker %d received request', cluster.worker.id);
 	next();
+});
+
+// make sure data directory exists
+var dataDir = __dirname + '/data';
+var vacationPhotoDir = dataDir + '/vacation-photo';
+fs.existsSync(dataDir) || fs.mkdirSync(dataDir);
+fs.existsSync(vacationPhotoDir) || fs.mkdirSync(vacationPhotoDir);
+
+function saveContestEntry(contestName, email, year, photoPath){
+	// TODO this will come later
+}
+
+app.post('/contest/vacation-photo/:year/_month', function(req, res){
+	var form = new formidable.IncomingForm();
+	form.parse(req, function(err, fields, files){
+		if(err) return res.redirect(303, '/error');
+		if(err){
+			res.session.flash = {
+				type: 'danger',
+				intro: 'Oops',
+				message: ' There was an error processing your submission. Please try again',
+			};
+			return res.redirect(303, '/contest/vacation-photo');
+		}
+		var photo = files.photo;
+		var dir = vacationPhotoDir + '/' + Date.now();
+		var path = dir + '/' + photo.name;
+		fs.mkdirSync(dir);
+		fs.renameSync(photo.path, dir + '/' + photo.name);
+		saveContestEntry('vacation-photo', fields.email, req.params.year, req.params.month, path);
+		req.session.flash = {
+			type: 'success',
+			intro: 'Good luck!',
+			message: ' You have been entered into the contest.',
+		};
+		return res.redirect(303, '/contest/vacation-photo/entries');
+	});
 });
 
 app.get('/newsletter', function(req, res){
